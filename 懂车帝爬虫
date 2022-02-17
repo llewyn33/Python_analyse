@@ -1,0 +1,58 @@
+import requests
+import re
+from requests.exceptions import RequestException
+
+
+def get_one_page(url, headers):
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            return response.text
+        return None
+    except RequestException:
+        return None
+
+
+def parse_one_page(html):
+    pattern = re.compile('series_name(.*?),'
+                         + '.*?rank(.*?),'
+                         + '.*?min_price(.*?),'
+                         + '.*?max_price(.*?),'
+                         + '.*?last_rank(.*?),'
+                         + '.*?count(.*?),'
+                         + '.*?brand_name(.*?),'
+                         + '.*?sub_brand_name(.*?),', re.S)
+    items = re.findall(pattern, html)
+    for item in items:
+        yield {
+            'series_name': item[0][3:],
+            'rank': item[1],
+            'min_price': item[2][2:],
+            'max_price': item[3][2:],
+            'last_rank': item[4][2:],
+            'count': item[5],
+            'brand_name': item[6][3:],
+            'sub_brand_name': item[7][3:]
+        }
+
+
+def write_to_file(content):
+    with open('result.txt', 'a', encoding='utf-8') as f:
+        f.write(json.dumps(content, ensure_ascii=False) + '\n')
+        f.close()
+
+
+def main(offset):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36'
+    }
+    url = 'https://www.dongchedi.com/motor/pc/car/rank_data?city_name=%E4%B8%8A%E6%B5%B7&count=10&offset=' + str(offset) + '&month=&new_energy_type=1%2C2%2C3&rank_data_type=11&brand_id=&price=&manufacturer=&outter_detail_type=&nation=0'
+    html = get_one_page(url, headers)
+    for item in parse_one_page(html):
+        print(item)
+        write_to_file(item)
+
+
+if __name__ == '__main__':
+    for i in range(20):
+        main(i * 10)
